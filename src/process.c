@@ -1,6 +1,6 @@
 #include "../include/basset.h"
 
-void print_ethernet_header(unsigned char *buffer, FILE *capture_file) {
+void print_ethernet_header(const unsigned char *buffer, FILE *capture_file) {
   struct ethhdr *eth = (struct ethhdr *)(buffer);
   fprintf(capture_file, "\nEthernet Header\n");
   fprintf(capture_file,
@@ -15,7 +15,7 @@ void print_ethernet_header(unsigned char *buffer, FILE *capture_file) {
           ntohs(eth->h_proto));
 }
 
-void print_ip_header(unsigned char *buffer, FILE *capture_file) {
+void print_ip_header(const unsigned char *buffer, FILE *capture_file) {
   struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
   // iphdrlen = ip->ihl * 4;
   static struct sockaddr_in source;
@@ -46,9 +46,9 @@ void print_ip_header(unsigned char *buffer, FILE *capture_file) {
           inet_ntoa(dest.sin_addr));
 }
 
-void print_payload(unsigned char *buffer, int buflen, int iphdrlen,
+void print_payload(const unsigned char *buffer, int buflen, int iphdrlen,
                    FILE *capture_file) {
-  unsigned char *data =
+  const unsigned char *data =
       (buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct udphdr));
   fprintf(capture_file, "\nData\n");
   int remaining_data =
@@ -60,7 +60,7 @@ void print_payload(unsigned char *buffer, int buflen, int iphdrlen,
   fprintf(capture_file, "\n");
 }
 
-void print_tcp_header(unsigned char *buffer, int buflen, int iphdrlen,
+void print_tcp_header(const unsigned char *buffer, int buflen, int iphdrlen,
                       FILE *capture_file) {
   fprintf(
       capture_file,
@@ -73,25 +73,48 @@ void print_tcp_header(unsigned char *buffer, int buflen, int iphdrlen,
   fprintf(capture_file, "\nTCP Header\n");
   fprintf(capture_file, "\t|-Source Port          : %u\n", ntohs(tcp->source));
   fprintf(capture_file, "\t|-Destination Port     : %u\n", ntohs(tcp->dest));
+  // The server and client both choose a pseudo-random number called the Initial
+  // Sequence Number, which is then increased by the number of bytes
+  // transmitted in further packets to allow for reliable packet ordering.
   fprintf(capture_file, "\t|-Sequence Number      : %u\n", ntohl(tcp->seq));
+  // The ACK number tells us the byte number of the last received data byte
   fprintf(capture_file, "\t|-Acknowledge Number   : %u\n", ntohl(tcp->ack_seq));
+  // The minimum TCP header length is 5 DWORDS (20 bytes), with anything larger
+  // being due to included options
   fprintf(capture_file, "\t|-Header Length        : %d DWORDS or %d BYTES\n",
           (unsigned int)tcp->doff, (unsigned int)tcp->doff * 4);
   fprintf(capture_file, "\t|----------Flags-----------\n");
+  // The urgent flag indicates that the data being sent should be prioritized
+  // over data without the flag. This flag is not often used
   fprintf(capture_file, "\t\t|-Urgent Flag          : %d\n",
           (unsigned int)tcp->urg);
+  // The ACK flag dictates whether the other side of the connection should
+  // concern itself with the ACK number (1) or ignore it (0)
   fprintf(capture_file, "\t\t|-Acknowledgement Flag : %d\n",
           (unsigned int)tcp->ack);
+  // The PSH flag indicates that the data should be sent immediately rather
+  // than adding it to a buffer
   fprintf(capture_file, "\t\t|-Push Flag            : %d\n",
           (unsigned int)tcp->psh);
+  // The RST flag tells the other side to cleanup resources and close the
+  // connection immediately, often used when errors occur.
+  // Equivalent to telling someone to stop speaking mid-sentence
   fprintf(capture_file, "\t\t|-Reset Flag           : %d\n",
           (unsigned int)tcp->rst);
+  // The SYN flag indicates that we are starting the handshake process
   fprintf(capture_file, "\t\t|-Synchronise Flag     : %d\n",
           (unsigned int)tcp->syn);
+  // The FIN flag tells the receiver that all data has been sent and that the
+  // connection may be closed
+  // Equivalent to telling someone goodbye when a conversation has concluded
+  // A proper connection shutdown will have a FIN-ACK-FIN handshake
   fprintf(capture_file, "\t\t|-Finish Flag          : %d\n",
           (unsigned int)tcp->fin);
+  // The WND flag indicates the amount of data capable of being received at the time.
+  // The window size changes throughout the connection to best optimize data transmission without overwhelming the receiver  
   fprintf(capture_file, "\t|-Window size          : %d\n", ntohs(tcp->window));
   fprintf(capture_file, "\t|-Checksum             : %d\n", ntohs(tcp->check));
+  // The urgent pointer indicates where the urgent data ends
   fprintf(capture_file, "\t|-Urgent Pointer       : %d\n", tcp->urg_ptr);
 
   print_payload(buffer, buflen, iphdrlen, capture_file);
@@ -101,7 +124,7 @@ void print_tcp_header(unsigned char *buffer, int buflen, int iphdrlen,
           "******\n\n\n");
 }
 
-void print_udp_header(unsigned char *buffer, int buflen, int iphdrlen,
+void print_udp_header(const unsigned char *buffer, int buflen, int iphdrlen,
                       FILE *capture_file) {
   fprintf(
       capture_file,
