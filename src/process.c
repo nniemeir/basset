@@ -1,7 +1,7 @@
 #include "../include/basset.h"
 
 void print_ethernet_header(const unsigned char *buffer, FILE *capture_file) {
-  struct ethhdr *eth = (struct ethhdr *)(buffer);
+  const struct ethhdr *eth = (struct ethhdr *)(buffer);
   fprintf(capture_file, "\nEthernet Header\n");
   fprintf(capture_file,
           "\t|-Source Address	: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
@@ -16,7 +16,7 @@ void print_ethernet_header(const unsigned char *buffer, FILE *capture_file) {
 }
 
 void print_ip_header(const unsigned char *buffer, FILE *capture_file) {
-  struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+  const struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
   // iphdrlen = ip->ihl * 4;
   static struct sockaddr_in source;
   static struct sockaddr_in dest;
@@ -46,8 +46,8 @@ void print_ip_header(const unsigned char *buffer, FILE *capture_file) {
           inet_ntoa(dest.sin_addr));
 }
 
-void print_payload(const unsigned char *buffer, int buflen, int iphdrlen,
-                   FILE *capture_file) {
+void print_payload(const unsigned char *buffer, const int buflen,
+                   const int iphdrlen, FILE *capture_file) {
   const unsigned char *data =
       (buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct udphdr));
   fprintf(capture_file, "\nData\n");
@@ -60,15 +60,15 @@ void print_payload(const unsigned char *buffer, int buflen, int iphdrlen,
   fprintf(capture_file, "\n");
 }
 
-void print_tcp_header(const unsigned char *buffer, int buflen, int iphdrlen,
-                      FILE *capture_file) {
+void print_tcp_header(const unsigned char *buffer, const int buflen,
+                      const int iphdrlen, FILE *capture_file) {
   fprintf(
       capture_file,
       "\n*************************TCP Packet******************************");
   print_ethernet_header(buffer, capture_file);
   print_ip_header(buffer, capture_file);
 
-  struct tcphdr *tcp =
+  const struct tcphdr *tcp =
       (struct tcphdr *)(buffer + iphdrlen + sizeof(struct ethhdr));
   fprintf(capture_file, "\nTCP Header\n");
   fprintf(capture_file, "\t|-Source Port          : %u\n", ntohs(tcp->source));
@@ -110,8 +110,9 @@ void print_tcp_header(const unsigned char *buffer, int buflen, int iphdrlen,
   // A proper connection shutdown will have a FIN-ACK-FIN handshake
   fprintf(capture_file, "\t\t|-Finish Flag          : %d\n",
           (unsigned int)tcp->fin);
-  // The WND flag indicates the amount of data capable of being received at the time.
-  // The window size changes throughout the connection to best optimize data transmission without overwhelming the receiver  
+  // The WND flag indicates the amount of data capable of being received at the
+  // time. The window size changes throughout the connection to best optimize
+  // data transmission without overwhelming the receiver
   fprintf(capture_file, "\t|-Window size          : %d\n", ntohs(tcp->window));
   fprintf(capture_file, "\t|-Checksum             : %d\n", ntohs(tcp->check));
   // The urgent pointer indicates where the urgent data ends
@@ -124,8 +125,8 @@ void print_tcp_header(const unsigned char *buffer, int buflen, int iphdrlen,
           "******\n\n\n");
 }
 
-void print_udp_header(const unsigned char *buffer, int buflen, int iphdrlen,
-                      FILE *capture_file) {
+void print_udp_header(const unsigned char *buffer, const int buflen,
+                      const int iphdrlen, FILE *capture_file) {
   fprintf(
       capture_file,
       "\n*************************UDP Packet******************************");
@@ -133,7 +134,7 @@ void print_udp_header(const unsigned char *buffer, int buflen, int iphdrlen,
   print_ip_header(buffer, capture_file);
   fprintf(capture_file, "\nUDP Header\n");
 
-  struct udphdr *udp =
+  const struct udphdr *udp =
       (struct udphdr *)(buffer + iphdrlen + sizeof(struct ethhdr));
   fprintf(capture_file, "\t|-Source Port    	: %d\n", ntohs(udp->source));
   fprintf(capture_file, "\t|-Destination Port	: %d\n", ntohs(udp->dest));
@@ -147,9 +148,10 @@ void print_udp_header(const unsigned char *buffer, int buflen, int iphdrlen,
           "******\n\n\n");
 }
 
-void process_packet(unsigned char *buffer, const int buflen, FILE *capture_file,
+void process_packet(const unsigned char *buffer, const int buflen,
+                    FILE *capture_file,
                     struct captured_packets *captured_packets_count) {
-  struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
+  const struct iphdr *ip = (struct iphdr *)(buffer + sizeof(struct ethhdr));
   // Each protocol is associated with a number in /etc/protocols
   int iphdrlen = 0;
   switch (ip->protocol) {

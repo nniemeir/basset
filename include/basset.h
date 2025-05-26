@@ -27,6 +27,7 @@ struct captured_packets {
   int other;
 };
 
-void process_packet(unsigned char *buffer, const int buflen, FILE *capture_file,
+void process_packet(const unsigned char *buffer, const int buflen,
+                    FILE *capture_file,
                     struct captured_packets *captured_packets_count);
 #endif
