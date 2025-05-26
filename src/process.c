@@ -11,6 +11,8 @@ void print_ethernet_header(const unsigned char *buffer, FILE *capture_file) {
           "\t|-Destination Address	: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
           eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3],
           eth->h_dest[4], eth->h_dest[5]);
+  // The protocol that the payload is being sent under, see IEEE's documentation
+  // on Ethertype
   fprintf(capture_file, "\t|-Protocol		: 0x%.4X\n",
           ntohs(eth->h_proto));
 }
@@ -27,16 +29,30 @@ void print_ip_header(const unsigned char *buffer, FILE *capture_file) {
 
   fprintf(capture_file, "\nIP Header\n");
 
+  // IP version, usually 4 since IPv4 is most prevalent
   fprintf(capture_file, "\t|-Version              : %d\n",
           (unsigned int)ip->version);
+  // The total length of the IP header (IHL) itself
   fprintf(capture_file, "\t|-Internet Header Length  : %d DWORDS or %d Bytes\n",
           (unsigned int)ip->ihl, ((unsigned int)(ip->ihl)) * 4);
-  fprintf(capture_file, "\t|-Type Of Service   : %d\n", (unsigned int)ip->tos);
+  // Also called Type of Service, used to prioritize traffic based on its
+  // importance
+  fprintf(capture_file, "\t|-DSCP   : %d\n", (unsigned int)ip->tos);
+  // The length of both the IP header and the payload
   fprintf(capture_file, "\t|-Total Length      : %d  Bytes\n",
           ntohs(ip->tot_len));
+  // If the packet is fragmented, each fragment will be marked with the same
+  // identification number
   fprintf(capture_file, "\t|-Identification    : %d\n", ntohs(ip->id));
+  // In fragmented packets, indicated the position of this fragment
+  fprintf(capture_file, "\t|-Fragmentation Offset    : %d\n",
+          ntohs(ip->frag_off));
+  // The TTL is a number that gets decreased by 1 each time the packet goes
+  // through a router. When the number reaches zero, the packet is dropped by
+  // the next router to prevent routing loops
   fprintf(capture_file, "\t|-Time To Live	    : %d\n",
           (unsigned int)ip->ttl);
+  // Each protocol is associated with a number in /etc/protocols
   fprintf(capture_file, "\t|-Protocol 	    : %d\n",
           (unsigned int)ip->protocol);
   fprintf(capture_file, "\t|-Header Checksum   : %d\n", ntohs(ip->check));
