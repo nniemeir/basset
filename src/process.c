@@ -28,7 +28,6 @@ void print_ip_header(const unsigned char *buffer, FILE *capture_file) {
   dest.sin_addr.s_addr = ip->daddr;
 
   fprintf(capture_file, "\nIP Header\n");
-
   // IP version, usually 4 since IPv4 is most prevalent
   fprintf(capture_file, "\t|-Version              : %d\n",
           (unsigned int)ip->version);
@@ -172,14 +171,18 @@ void process_packet(const unsigned char *buffer, const int buflen,
   int iphdrlen = 0;
   switch (ip->protocol) {
   case TCP_CODE:
-    ++captured_packets_count->tcp;
-    print_tcp_header(buffer, buflen, iphdrlen, capture_file);
+    if (filter_protocol == 0 || filter_protocol == 1) {
+      ++captured_packets_count->tcp;
+      print_tcp_header(buffer, buflen, iphdrlen, capture_file);
+      packets_to_capture--;
+    }
     break;
   case UDP_CODE:
-    ++captured_packets_count->udp;
-    print_udp_header(buffer, buflen, iphdrlen, capture_file);
+    if (filter_protocol == 0 || filter_protocol == 2) {
+      ++captured_packets_count->udp;
+      print_udp_header(buffer, buflen, iphdrlen, capture_file);
+      packets_to_capture--;
+    }
     break;
-  default:
-    ++captured_packets_count->other;
   }
 }

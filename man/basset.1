@@ -2,15 +2,21 @@
 .SH NAME
 Basset \- a minimal packet capture utility
 .SH SYNOPSIS
-.B basset [-l]
+.B basset [-i \fI\,INTERFACE\/\fR] [-l] [-n \fI\,NUM_OF_PACKETS\/\fR] [-p \fI\,PROTOCOL\/\fR]
 
 .SH DESCRIPTION
 .TP
 \fB\-h\fR 
 display program usage
+\fB\-i[INTERFACE]\fR 
+specify interface to bind to
 .TP
 \fB\-l\fR 
 save logs to file
+\fB\-n[NUM_OF_PACKETS]\fR 
+specify number of packets to capture
+\fB\-p[PROTOCOL]\fR 
+filter for a specific protocol
 
 .SH COPYRIGHT
 Copyright \(co 2025 Jacob Niemeir.

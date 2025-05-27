@@ -3,7 +3,10 @@
 
 const char *program_name = "basset";
 int log_to_file = 0;
+int filter_protocol = 0;
+int packets_to_capture = -1;
 static int sock_fd;
+static char *interface = NULL;
 
 void handler(int signal_num) {
   char signal_name[SIGNAL_MAX];
@@ -22,22 +25,42 @@ void handler(int signal_num) {
   char signal_msg[LOG_MAX];
   snprintf(signal_msg, LOG_MAX, "%s given, closing socket", signal_name);
   log_event(program_name, INFO, signal_msg, log_to_file);
-  close(sock_fd);
 }
 
 void process_args(int argc, char *argv[]) {
   char errmsg[LOG_MAX];
   int c;
-  while ((c = getopt(argc, argv, "hl")) != -1) {
+  while ((c = getopt(argc, argv, "hi:ln:p:")) != -1) {
     switch (c) {
     case 'h':
       printf("Usage: basset [options]\n");
       printf("Options:\n");
       printf("  -h               Show this help message\n");
+      printf("  -i               Specify interface to bind to\n");
       printf("  -l               Save logs to file\n");
+      printf("  -n               Specify number of packets to capture\n");
+      printf("  -p               Filter for a specific protocol\n");
       exit(EXIT_SUCCESS);
+    case 'i':
+      interface = optarg;
+      break;
     case 'l':
       log_to_file = 1;
+      break;
+    case 'n':
+      log_to_file = 1;
+      packets_to_capture = atoi(optarg);
+      break;
+    case 'p':
+      if (!strcmp(optarg, "tcp")) {
+        filter_protocol = 1;
+        break;
+      }
+      if (!strcmp(optarg, "udp")) {
+        filter_protocol = 2;
+        break;
+      }
+      log_event(program_name, ERROR, "Unknown protocol", log_to_file);
       break;
     case '?':
       snprintf(errmsg, LOG_MAX,
@@ -85,6 +108,16 @@ int main(int argc, char *argv[]) {
   snprintf(start_msg, LOG_MAX, "Starting capture");
   log_event(program_name, INFO, start_msg, log_to_file);
   struct sockaddr saddr;
+
+  if (interface) {
+    if (setsockopt(sock_fd, SOL_SOCKET, SO_BINDTODEVICE, interface,
+                   sizeof(interface)) < 0) {
+      log_event(program_name, FATAL, "Failed to bind to device", log_to_file);
+      close(sock_fd);
+      return EXIT_FAILURE;
+    }
+  }
+
   FILE *capture_file = fopen("capture", "a");
   if (!capture_file) {
     log_event(program_name, FATAL, "Failed to open capture file", log_to_file);
@@ -93,6 +126,10 @@ int main(int argc, char *argv[]) {
   bool capturing = true;
   struct captured_packets captured_packets_count = {0, 0, 0};
   while (capturing) {
+    if (packets_to_capture == 0) {
+      capturing = false;
+      break;
+    }
     saddr_len = sizeof saddr;
     buflen = recvfrom(sock_fd, buffer, BUFFER_SIZE, 0, &saddr,
                       (socklen_t *)&saddr_len);
@@ -112,6 +149,7 @@ int main(int argc, char *argv[]) {
 
     process_packet(buffer, buflen, capture_file, &captured_packets_count);
   }
+  close(sock_fd);
   char totals_msg[LOG_MAX];
   snprintf(totals_msg, LOG_MAX, "%d TCP, %d UDP, and %d other packets captured",
            captured_packets_count.tcp, captured_packets_count.udp,

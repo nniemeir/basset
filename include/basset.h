@@ -21,6 +21,9 @@
 #define TCP_CODE 6
 #define UDP_CODE 17
 
+extern int filter_protocol;
+extern int packets_to_capture;
+
 struct captured_packets {
   int tcp;
   int udp;
