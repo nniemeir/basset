@@ -12,7 +12,10 @@ basset [OPTIONS]
 ### Options
 ```
 -h                      Display program usage
--l                      Save program output to file
+-i                      Specify interface to bind to
+-l                      Save logs to file
+-n                      Specify number of packets to capture
+-p                      Filter for a specific protocol
 ```
 
 ## License
